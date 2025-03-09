@@ -76,4 +76,7 @@ void				precise_sleep(long ms);
 // philo_utils.c
 void				detach_all_philos(t_table *table, t_philo *philos);
 void				join_all_philos(t_table *table, t_philo *philos);
+int					check_anyone_dead(t_philo *philos, int i);
+int					check_all_ate(t_philo *philos, int all_ate_count);
+int					check_stop_conditions(t_philo *philo);
 #endif

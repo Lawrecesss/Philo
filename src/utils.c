@@ -63,7 +63,7 @@ void	print_status(t_philo *philo, char *status)
 	pthread_mutex_unlock(&philo->table->write_mutex);
 }
 
-void	precise_sleep(long ms)
+void	ft_sleep(long ms)
 {
 	long	start_time;
 	long	current_time;

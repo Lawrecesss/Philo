@@ -87,8 +87,7 @@ int	check_stop_conditions(t_philo *philo)
 	{
 		pthread_mutex_lock(&philo->left_fork->mutex);
 		print_status(philo, "has taken a fork");
-		precise_sleep(philo->table->time_to_die);
-		print_status(philo, "died");
+		ft_sleep(philo->table->time_to_die);
 		pthread_mutex_unlock(&philo->left_fork->mutex);
 		return (1);
 	}

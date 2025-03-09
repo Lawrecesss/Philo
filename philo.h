@@ -71,7 +71,7 @@ void				cleanup(t_philo *philos, t_fork *forks, t_table *table);
 void				*philo_routine(void *arg);
 void				philo_eat(t_philo *philo);
 void				*monitor_routine(void *arg);
-void				precise_sleep(long ms);
+void				ft_sleep(long ms);
 
 // philo_utils.c
 void				detach_all_philos(t_table *table, t_philo *philos);

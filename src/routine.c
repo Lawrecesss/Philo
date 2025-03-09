@@ -27,7 +27,7 @@ void	*monitor_routine(void *arg)
 		{
 			pthread_mutex_lock(&philos[i].meal_mutex);
 			if (check_anyone_dead(philos, i))
-				return ;
+				return (NULL);
 			if (philos[i].meals_eaten >= philos->table->num_meals
 				&& philos->table->num_meals > 0)
 				all_ate_count++;
@@ -35,7 +35,7 @@ void	*monitor_routine(void *arg)
 			i++;
 		}
 		if (check_all_ate(philos, all_ate_count))
-			return ;
+			return (NULL);
 		usleep(1000);
 	}
 	return (NULL);
@@ -62,7 +62,7 @@ void	philo_eat(t_philo *philo)
 	philo->last_meal_time = get_time();
 	philo->meals_eaten++;
 	pthread_mutex_unlock(&philo->meal_mutex);
-	precise_sleep(philo->table->time_to_eat);
+	ft_sleep(philo->table->time_to_eat);
 	pthread_mutex_unlock(&philo->left_fork->mutex);
 	pthread_mutex_unlock(&philo->right_fork->mutex);
 }
@@ -73,15 +73,16 @@ void	*philo_routine(void *arg)
 
 	philo = (t_philo *)arg;
 	if (philo->id % 2 == 0)
-		precise_sleep(philo->table->time_to_eat / 2);
+		ft_sleep(philo->table->time_to_eat / 2);
 	while (1)
 	{
 		if (check_stop_conditions(philo))
 			break ;
 		philo_eat(philo);
 		print_status(philo, "is sleeping");
-		precise_sleep(philo->table->time_to_sleep);
+		ft_sleep(philo->table->time_to_sleep);
 		print_status(philo, "is thinking");
+		usleep(500);
 	}
 	return (NULL);
 }

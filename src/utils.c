@@ -5,67 +5,98 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: lshein <lshein@student.42singapore.sg>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/03/03 01:43:10 by lshein            #+#    #+#             */
-/*   Updated: 2025/03/06 00:50:29 by lshein           ###   ########.fr       */
+/*   Created: 2025/03/07 16:05:02 by lshein            #+#    #+#             */
+/*   Updated: 2025/03/08 09:27:49 by lshein           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../philo.h"
 
-long get_current_time(void)
+int	ft_atoi(const char *str)
 {
-    struct timeval tv;
-    
-    gettimeofday(&tv, NULL);
-    return ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
+	int		i;
+	int		sign;
+	long	result;
+
+	i = 0;
+	sign = 1;
+	result = 0;
+	while (str[i] == ' ' || (str[i] >= 9 && str[i] <= 13))
+		i++;
+	if (str[i] == '-' || str[i] == '+')
+	{
+		if (str[i] == '-')
+			sign = -1;
+		i++;
+	}
+	while (str[i] >= '0' && str[i] <= '9')
+	{
+		result = result * 10 + (str[i] - '0');
+		i++;
+	}
+	return (sign * result);
 }
 
-void philosopher_sleep(long milliseconds)
+long	get_time(void)
 {
-    long start = get_current_time();
-    
-    while (get_current_time() - start < milliseconds)
-        usleep(100);
+	struct timeval	tv;
+
+	gettimeofday(&tv, NULL);
+	return ((tv.tv_sec * 1000) + (tv.tv_usec / 1000));
 }
 
-void log_state(t_philo *philo, char *state)
+void	print_status(t_philo *philo, char *status)
 {
-    long timestamp;
+	long	current_time;
 
-    // Don't log if simulation is stopped
-    if (is_simulation_stopped(philo->data))
-        return;
-
-    timestamp = get_current_time() - philo->data->time.start_time;
-
-    // Use mutex to ensure atomic printing
-    pthread_mutex_lock(&philo->data->write_lock);
-    if (!is_simulation_stopped(philo->data))
-        printf("%ld %d %s\n", timestamp, philo->id, state);
-    pthread_mutex_unlock(&philo->data->write_lock);
+	pthread_mutex_lock(&philo->table->write_mutex);
+	pthread_mutex_lock(&philo->table->dead_mutex);
+	if (philo->table->someone_died == true)
+	{
+		pthread_mutex_unlock(&philo->table->dead_mutex);
+		pthread_mutex_unlock(&philo->table->write_mutex);
+		return ;
+	}
+	pthread_mutex_unlock(&philo->table->dead_mutex);
+	current_time = get_time() - philo->table->start_time;
+	printf("%ld %d %s\n", current_time, philo->id, status);
+	pthread_mutex_unlock(&philo->table->write_mutex);
 }
 
-int is_simulation_stopped(t_data *data)
+void	precise_sleep(long ms)
 {
-    int stop;
+	long	start_time;
+	long	current_time;
 
-    pthread_mutex_lock(&data->sim_lock);
-    stop = data->simulation_stop;
-    pthread_mutex_unlock(&data->sim_lock);
-
-    return (stop);
+	start_time = get_time();
+	while (1)
+	{
+		current_time = get_time();
+		if (current_time - start_time >= ms)
+			break ;
+		usleep(500);
+	}
 }
 
-void set_simulation_stop(t_data *data)
+void	cleanup(t_philo *philos, t_fork *forks, t_table *table)
 {
-    pthread_mutex_lock(&data->sim_lock);
-    data->simulation_stop = 1;
-    pthread_mutex_unlock(&data->sim_lock);
-}
+	int	i;
 
-void update_last_meal_time(t_philo *philo)
-{
-    pthread_mutex_lock(&philo->meal_lock);
-    philo->last_meal_time = get_current_time() - philo->data->time.start_time;
-    pthread_mutex_unlock(&philo->meal_lock);
+	i = 0;
+	while (i < table->num_philos)
+	{
+		pthread_mutex_destroy(&philos[i].meal_mutex);
+		i++;
+	}
+	i = 0;
+	while (i < table->num_philos)
+	{
+		pthread_mutex_destroy(&forks[i].mutex);
+		i++;
+	}
+	pthread_mutex_destroy(&table->write_mutex);
+	pthread_mutex_destroy(&table->dead_mutex);
+	pthread_mutex_destroy(&table->meal_mutex);
+	free(philos);
+	free(forks);
 }

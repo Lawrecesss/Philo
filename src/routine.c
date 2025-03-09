@@ -5,83 +5,120 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: lshein <lshein@student.42singapore.sg>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/03/03 01:57:35 by lshein            #+#    #+#             */
-/*   Updated: 2025/03/06 01:02:26 by lshein           ###   ########.fr       */
+/*   Created: 2025/03/07 16:09:01 by lshein            #+#    #+#             */
+/*   Updated: 2025/03/08 09:38:00 by lshein           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../philo.h"
 
-void wait_for_all_threads(t_data *data)
+void	*monitor_routine(void *arg)
 {
-    // Ensure all threads are ready before starting
-    while (!is_simulation_stopped(data)) 
-        usleep(10);
+	t_philo	*philos;
+	int		i;
+	long	current_time;
+	int		all_ate_count;
+
+	philos = (t_philo *)arg;
+	while (1)
+	{
+		i = 0;
+		all_ate_count = 0;
+		while (i < philos->table->num_philos)
+		{
+			pthread_mutex_lock(&philos[i].meal_mutex);
+			current_time = get_time();
+			if (current_time
+				- philos[i].last_meal_time > philos->table->time_to_die)
+			{
+				print_status(&philos[i], "died");
+				pthread_mutex_lock(&philos->table->dead_mutex);
+				philos->table->someone_died = true;
+				pthread_mutex_unlock(&philos->table->dead_mutex);
+				pthread_mutex_unlock(&philos[i].meal_mutex);
+				return (NULL);
+			}
+			if (philos[i].meals_eaten >= philos->table->num_meals
+				&& philos->table->num_meals > 0)
+				all_ate_count++;
+			pthread_mutex_unlock(&philos[i].meal_mutex);
+			i++;
+		}
+		if (all_ate_count == philos->table->num_philos
+			&& philos->table->num_meals > 0)
+		{
+			pthread_mutex_lock(&philos->table->meal_mutex);
+			philos->table->all_ate = true;
+			pthread_mutex_unlock(&philos->table->meal_mutex);
+			return (NULL);
+		}
+		usleep(1000);
+	}
+	return (NULL);
 }
 
-int philosopher_eat(t_philo *philo)
+void	philo_eat(t_philo *philo)
 {
-    // Prevent deadlock by having even/odd philosophers pick up forks differently
-    if (is_simulation_stopped(philo->data))
-        return (0);
-
-    if (philo->id % 2 == 0)
-    {
-        pthread_mutex_lock(&philo->left_fork->lock);
-        log_state(philo, "has taken a fork");
-        pthread_mutex_lock(&philo->right_fork->lock);
-        log_state(philo, "has taken a fork");
-    }
-    else
-    {
-        pthread_mutex_lock(&philo->right_fork->lock);
-        log_state(philo, "has taken a fork");
-        pthread_mutex_lock(&philo->left_fork->lock);
-        log_state(philo, "has taken a fork");
-    }
-
-    // Eating state
-    log_state(philo, "is eating");
-    update_last_meal_time(philo);
-    philosopher_sleep(philo->data->time_to_eat);
-
-    // Increment meal count
-    pthread_mutex_lock(&philo->meal_lock);
-    philo->meals_eaten++;
-    pthread_mutex_unlock(&philo->meal_lock);
-
-    // Release forks
-    pthread_mutex_unlock(&philo->left_fork->lock);
-    pthread_mutex_unlock(&philo->right_fork->lock);
-
-    return (1);
+	if (philo->id % 2 == 0)
+	{
+		pthread_mutex_lock(&philo->right_fork->mutex);
+		print_status(philo, "has taken a fork");
+		pthread_mutex_lock(&philo->left_fork->mutex);
+		print_status(philo, "has taken a fork");
+	}
+	else
+	{
+		pthread_mutex_lock(&philo->left_fork->mutex);
+		print_status(philo, "has taken a fork");
+		pthread_mutex_lock(&philo->right_fork->mutex);
+		print_status(philo, "has taken a fork");
+	}
+	print_status(philo, "is eating");
+	pthread_mutex_lock(&philo->meal_mutex);
+	philo->last_meal_time = get_time();
+	philo->meals_eaten++;
+	pthread_mutex_unlock(&philo->meal_mutex);
+	precise_sleep(philo->table->time_to_eat);
+	pthread_mutex_unlock(&philo->left_fork->mutex);
+	pthread_mutex_unlock(&philo->right_fork->mutex);
 }
 
-void *philosopher_routine(void *arg)
+void	*philo_routine(void *arg)
 {
-    t_philo *philo = (t_philo *)arg;
+	t_philo	*philo;
 
-    // Wait for all threads to start
-    wait_for_all_threads(philo->data);
-
-    // If philosopher ID is odd, wait slightly to prevent deadlock
-    if (philo->id % 2 == 0)
-		philosopher_sleep(1);
-
-    // Main philosopher loop
-    while (!is_simulation_stopped(philo->data))
-    {
-        // Try to eat
-        if (!philosopher_eat(philo))
-            break;
-
-        // Sleep state
-        log_state(philo, "is sleeping");
-        philosopher_sleep(philo->data->time_to_sleep);
-
-        // Think state
-        log_state(philo, "is thinking");
-    }
-
-    return (NULL);
+	philo = (t_philo *)arg;
+	if (philo->id % 2 == 0)
+		precise_sleep(philo->table->time_to_eat / 2);
+	while (1)
+	{
+		pthread_mutex_lock(&philo->table->dead_mutex);
+		if (philo->table->someone_died)
+		{
+			pthread_mutex_unlock(&philo->table->dead_mutex);
+			break ;
+		}
+		pthread_mutex_unlock(&philo->table->dead_mutex);
+		pthread_mutex_lock(&philo->table->meal_mutex);
+		if (philo->table->all_ate)
+		{
+			pthread_mutex_unlock(&philo->table->meal_mutex);
+			break ;
+		}
+		pthread_mutex_unlock(&philo->table->meal_mutex);
+		if (philo->table->num_philos == 1)
+		{
+			pthread_mutex_lock(&philo->left_fork->mutex);
+			print_status(philo, "has taken a fork");
+			precise_sleep(philo->table->time_to_die);
+			print_status(philo, "died");
+			pthread_mutex_unlock(&philo->left_fork->mutex);
+			break ;
+		}
+		philo_eat(philo);
+		print_status(philo, "is sleeping");
+		precise_sleep(philo->table->time_to_sleep);
+		print_status(philo, "is thinking");
+	}
+	return (NULL);
 }

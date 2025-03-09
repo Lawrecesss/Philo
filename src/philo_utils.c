@@ -1,41 +1,37 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   ft_utils.c                                         :+:      :+:    :+:   */
+/*   philo_utils.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: lshein <lshein@student.42singapore.sg>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/03/05 01:17:50 by lshein            #+#    #+#             */
-/*   Updated: 2025/03/05 01:21:03 by lshein           ###   ########.fr       */
+/*   Created: 2025/03/08 09:28:40 by lshein            #+#    #+#             */
+/*   Updated: 2025/03/08 09:37:44 by lshein           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../philo.h"
 
-int	ft_atoi(const char *nptr)
+void	detach_all_philos(t_table *table, t_philo *philos)
 {
-	int		i;
-	int		r;
-	char	sign;
+	int	i;
 
 	i = 0;
-	r = 0;
-	sign = '+';
-	while ((nptr[i] >= 9 && nptr[i] <= 13) || nptr[i] == 32)
-		i++;
-	if ((nptr[i] == '-' || nptr[i] == '+'))
+	while (i < table->num_philos)
 	{
-		if (nptr[i] == '-')
-			sign = '-';
+		pthread_detach(philos[i].thread);
 		i++;
 	}
-	while (nptr[i] >= '0' && nptr[i] <= '9')
-	{
-		r = r * 10 + nptr[i] - '0';
-		i++;
-	}
-	if (sign == '-')
-		r = r * -1;
-	return (r);
 }
 
+void	join_all_philos(t_table *table, t_philo *philos)
+{
+	int	i;
+
+	i = 0;
+	while (i < table->num_philos)
+	{
+		pthread_join(philos[i].thread, NULL);
+		i++;
+	}
+}

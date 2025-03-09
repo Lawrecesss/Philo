@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wextra -Werror
 AR = ar rcs
 RM = rm -rf
 
-SRCS = ./src/main.c ./src/monitoring.c ./src/routine.c ./src/utils.c ./src/init.c ./src/ft_utils.c
+SRCS = main.c src/init.c src/utils.c src/routine.c src/philo_utils.c
 OBJS = ${SRCS:.c=.o}
 
 all: ${NAME}
